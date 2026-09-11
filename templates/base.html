@@ -1,0 +1,4 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="csrf-token" content="{{ csrf }}"><meta name="description" content="일상 속 선택으로 알아보는 교육용 투자 성향 매칭 프로토타입"><title>AI 투자 성향 매칭</title><link rel="stylesheet" href="{{ url_for('static',filename='css/style.css') }}"><script defer src="{{ url_for('static',filename='js/main.js') }}"></script></head><body>
+<header><a class="brand" href="/"> <span class="brand-mark">↗</span> AI 투자 성향 매칭</a><span class="pill">교육용 프로토타입</span></header>
+<main>{% if demo %}<div class="notice">{{ demo_notice }}</div>{% endif %}{% block content %}{% endblock %}</main>
+<footer>본 결과는 교육 및 실험 목적의 예시이며 실제 투자 조언이 아닙니다.<br>실제 투자 결정은 개인의 판단과 책임에 따라 이루어져야 합니다.</footer></body></html>
