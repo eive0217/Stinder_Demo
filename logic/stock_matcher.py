@@ -24,8 +24,8 @@ def selection_allowed(p, selected):
     # Demo policy, not a scientifically calibrated investment constraint.
     return all(effective_risk(s) <= risk_limit(p) for s in selected) and sum(effective_risk(s)>=7 for s in selected)<=1 and len({s['sector'] for s in selected})>=2
 
-def select_stocks(p,stocks):
-    candidates = [group for group in combinations(stocks,3) if selection_allowed(p,group)]
+def select_stocks(p,stocks,exclude=()):
+    candidates = [group for group in combinations(stocks,3) if selection_allowed(p,group) and tuple(sorted(s["ticker"] for s in group)) not in exclude]
     if not candidates:
         raise ValueError('위험도 제한을 만족하는 종목 조합이 없습니다.')
     return list(max(candidates,key=lambda group: sum(match_score(p,s) for s in group)+2*len({s['sector'] for s in group})+max(effective_risk(s) for s in group)-min(effective_risk(s) for s in group)))

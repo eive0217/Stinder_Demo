@@ -2,7 +2,7 @@
 
 **GitHub Pages용 `index.html` 추가 완료:** Python 파일을 그대로 유지하며 사이트를 공개하는 방법은 [GITHUB_PAGES.md](GITHUB_PAGES.md)를 확인하세요. Pages는 데모 모드, Flask는 실제 OpenAI 연동을 지원합니다.
 
-한국어 Flask 웹 프로토타입입니다. 10개의 행동형 질문 → 투자 성향 분석 → 20개 가상 종목 비교 → 3종목 포트폴리오 순서로 작동합니다. 모든 금융 수치와 애널리스트 의견은 교육용 더미 데이터이며 실제 투자 조언이 아닙니다.
+한국어 Flask 웹 프로토타입입니다. 10개의 행동형 질문 → 투자 성향 분석 → 20개 가상 종목 비교 → 3종목씩 구성된 추천안 3개 순서로 작동합니다. 모든 금융 수치와 애널리스트 의견은 교육용 더미 데이터이며 실제 투자 조언이 아닙니다.
 
 ## 설치 및 실행
 
@@ -115,3 +115,21 @@ API 키 없이 실행합니다. Flask 전체 흐름, 입력·CSRF 검증, 잘못
 ## 향후 확장
 
 StockAnalysis.com 등의 실제 데이터 연결은 향후 작업입니다. 데이터 수집 모듈에서 현재 종목 스키마로 변환하고 출처·기준일·단위를 추가하면 매칭/AI/UI를 유지할 수 있습니다. OpenAI 연동은 이미 구현되어 있으며 데이터 크롤링은 포함하지 않습니다.
+
+## Render 배포
+
+GitHub에 변경된 requirements.txt를 커밋한 뒤 Render에서 다음 설정을 사용하세요.
+
+Build Command: `pip install -r requirements.txt`
+
+Start Command: `gunicorn 'app:create_app()' --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120`
+
+환경변수: OPENAI_API_KEY, FLASK_SECRET_KEY(고정 무작위 값), OPENAI_MODEL(선택).
+이 앱은 팩토리 구조라 `gunicorn app:app` 대신 위 명령이 필요합니다.
+Render의 임시 파일 시스템에서는 재배포/재시작 시 SQLite 분석 기록이 사라질 수 있습니다.
+
+## 추천안 3개 업데이트
+
+결과에서 A·B·C를 선택해 세 포트폴리오를 비교합니다. 각 안은 독립적인 대안이며 각 3종목, 비중 15~50%, 합계 100%입니다. 안 사이에 일부 종목은 겹칠 수 있지만 동일한 세 종목 조합은 거부합니다. 세 안에 같은 사용자 위험 제한을 적용합니다. 데모는 제한을 만족하는 서로 다른 상위 조합을 사용합니다.
+
+AI 두 번째 응답은 `{"portfolios": [{"portfolio_summary": "...", "recommendations": [...]}, ...]}` 구조이며 portfolios 길이는 정확히 3입니다. 정상 API 호출은 여전히 총 2회입니다. 기존 단일 추천 결과는 호환되지 않으므로 업데이트 후 테스트를 다시 진행하세요.

@@ -115,11 +115,17 @@ def create_app(test_config=None):
     def result():
         job=get_job()
         if not job or job['status']!='done': return redirect(url_for('questionnaire'))
-        p=json.loads(job['profile']); portfolio=json.loads(job['portfolio'])
+        p=json.loads(job['profile']); stored=json.loads(job['portfolio'])
+        if 'portfolios' not in stored:
+            return redirect(url_for('questionnaire'))
+        options=stored['portfolios']
+        selected=request.args.get('plan',0,type=int)
+        if selected not in (0,1,2): selected=0
+        portfolio=options[selected]
         catalog={s['ticker']:s for s in stocks}
         cards=[dict(**r,stock=catalog[r['ticker']]) for r in portfolio['recommendations']]
         return render_template('result.html',profile=p,portfolio=portfolio,cards=cards,
-            type_name=TYPE_NAMES[p['investor_type']],score_names=SCORE_NAMES,
+            type_name=TYPE_NAMES[p['investor_type']],score_names=SCORE_NAMES, options=options, selected=selected,
             profile_source=job['profile_source'],portfolio_source=job['portfolio_source'])
     return app
 

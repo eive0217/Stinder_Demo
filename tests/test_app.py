@@ -8,7 +8,7 @@ from unittest.mock import patch, MagicMock
 os.environ['OPENAI_API_KEY']=''
 from app import create_app
 from ai.investor_analysis import analyze_investor
-from ai.portfolio_recommendation import fallback_portfolio, recommend_portfolio
+from ai.portfolio_recommendation import fallback_portfolio, fallback_options, validate_options, recommend_portfolio
 from ai.openai_client import structured_call
 from logic.questionnaire import fallback_profile, validate_answers
 from logic.schemas import Portfolio, InvestorProfile, Stock
@@ -77,7 +77,7 @@ class PrototypeTests(unittest.TestCase):
         with patch('ai.portfolio_recommendation.api_enabled',return_value=True),patch('ai.portfolio_recommendation.structured_call',return_value=bad) as call:
             self.assertEqual(recommend_portfolio(self.profile,self.stocks)[1],'fallback');self.assertEqual(call.call_count,1)
     def test_exactly_two_sdk_calls_and_payloads(self):
-        responses=[MagicMock(status='completed',output_parsed=self.profile),MagicMock(status='completed',output_parsed=self.portfolio)]
+        responses=[MagicMock(status='completed',output_parsed=self.profile),MagicMock(status='completed',output_parsed=fallback_options(self.profile,self.stocks))]
         with patch.dict(os.environ,{'OPENAI_API_KEY':'test-fake'}),patch('ai.openai_client.OpenAI') as factory:
             sdk=factory.return_value;sdk.responses.parse.side_effect=responses
             self.post('/api/start',{'answers':[1]*10})
@@ -97,6 +97,24 @@ class PrototypeTests(unittest.TestCase):
         with patch('ai.openai_client.get_client') as client:
             client.return_value.responses.parse.return_value=MagicMock(status='incomplete',output_parsed=None)
             with self.assertRaises(ValueError):structured_call('test',{},InvestorProfile)
+    def test_three_options(self):
+        from logic.schemas import PortfolioOptions
+        for answers in ([0]*10,[1]*10,[2]*10):
+            profile=fallback_profile(answers)
+            options=fallback_options(profile,self.stocks)
+            self.assertEqual(len(options.portfolios),3)
+            validate_options(options,profile,self.stocks)
+        bad=options.model_dump();bad['portfolios'][1]=bad['portfolios'][0]
+        with self.assertRaises(ValueError):PortfolioOptions.model_validate(bad)
+        bad=options.model_dump();bad['portfolios'].pop()
+        with self.assertRaises(ValueError):PortfolioOptions.model_validate(bad)
+        self.post('/api/start',{'answers':[1]*10})
+        self.post('/api/profile');self.post('/api/portfolio')
+        for i in range(3):
+            page=self.client.get('/result?plan='+str(i))
+            self.assertEqual(page.status_code,200)
+            self.assertIn('추천안 '+['A','B','C'][i]+' · 종목과 비중',page.text)
+
     def test_stock_data_validation(self):
         b=self.stocks[0].copy();b['low_price_target']=b['high_price_target']+1
         with self.assertRaises(ValueError):Stock.model_validate(b)

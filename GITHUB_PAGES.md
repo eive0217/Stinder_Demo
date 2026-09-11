@@ -48,3 +48,9 @@ python scripts/build_static.py
 기존 `requirements.txt`의 Jinja2(Flask 의존성)를 사용합니다. 생성된 파일도 커밋해야 합니다. 계산 규칙을 바꿀 때는 Python 로직과 `static/js/pages-logic.js` 양쪽을 수정해야 합니다.
 
 공식 안내: [사이트 만들기](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site), [GitHub Actions 배포](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages).
+
+## 추천안 3개 업데이트
+
+결과에서 A·B·C를 선택해 세 포트폴리오를 비교합니다. 각 안은 독립적인 대안이며 각 3종목, 비중 15~50%, 합계 100%입니다. 안 사이에 일부 종목은 겹칠 수 있지만 동일한 세 종목 조합은 거부합니다. 세 안에 같은 사용자 위험 제한을 적용합니다. 데모는 제한을 만족하는 서로 다른 상위 조합을 사용합니다.
+
+AI 두 번째 응답은 `{"portfolios": [{"portfolio_summary": "...", "recommendations": [...]}, ...]}` 구조이며 portfolios 길이는 정확히 3입니다. 정상 API 호출은 여전히 총 2회입니다. 기존 단일 추천 결과는 호환되지 않으므로 업데이트 후 테스트를 다시 진행하세요.

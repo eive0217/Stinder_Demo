@@ -6,6 +6,10 @@ for(let i=0;i<243;i++){
  const p=logic.profile(answers,data),result=logic.portfolio(p,data.stocks);
  assert.equal(result.recommendations.length,3);assert.equal(result.recommendations.reduce((s,r)=>s+r.allocation,0),100);
  logic.validate(result,p,data.stocks);
+ const options=logic.options(p,data.stocks).portfolios;
+ assert.equal(options.length,3);
+ assert.equal(new Set(options.map(o=>o.recommendations.map(r=>r.ticker).sort().join(','))).size,3);
+ options.forEach(o=>logic.validate(o,p,data.stocks));
  for(const total of [0,1,2,99,1000000,1000000000000])assert.equal(logic.amounts(total,result.recommendations.map(r=>r.allocation)).reduce((a,b)=>a+b,0),total);
 }
 for(const a of [[],Array(10).fill(true),Array(10).fill(3)])assert.throws(()=>logic.profile(a,data));

@@ -24,7 +24,7 @@ def structured_call(system, payload, schema):
     with client:
         response = client.responses.parse(model=os.getenv('OPENAI_MODEL','gpt-4.1-mini'),
             input=[{'role':'system','content':system},{'role':'user','content':json.dumps(payload,ensure_ascii=False)}],
-            text_format=schema, max_output_tokens=3000, store=False)
+            text_format=schema, max_output_tokens=7000, store=False)
     if response.status != 'completed' or response.output_parsed is None:
         raise ValueError('응답 거부 또는 불완전한 JSON')
     return schema.model_validate(response.output_parsed.model_dump())

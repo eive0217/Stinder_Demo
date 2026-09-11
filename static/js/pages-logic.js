@@ -17,10 +17,10 @@
   }
   function match(p,s){return round(Math.min(100,Math.max(0,10*(.35*(10-Math.abs(p.risk_tolerance-effectiveRisk(s)))+.30*(10-Math.abs(p.growth_preference-s.growth_score))+.20*(10-Math.abs(p.loss_sensitivity-s.stability_score))+.10*(10-Math.abs(p.time_horizon-(s.growth_score*.6+s.stability_score*.4)))+.05*s.analyst_confidence))));}
   function allowed(p,group){return group.every(s=>effectiveRisk(s)<=riskLimit(p))&&group.filter(s=>effectiveRisk(s)>=7).length<=1&&new Set(group.map(s=>s.sector)).size>=2;}
-  function portfolio(p,stocks){
+  function portfolio(p,stocks,excluded=[]){
     let selected=null,best=-Infinity;
     for(let a=0;a<stocks.length-2;a++)for(let b=a+1;b<stocks.length-1;b++)for(let c=b+1;c<stocks.length;c++){
-      const group=[stocks[a],stocks[b],stocks[c]];if(!allowed(p,group))continue;
+      const group=[stocks[a],stocks[b],stocks[c]];if(!allowed(p,group)||excluded.includes(group.map(s=>s.ticker).sort().join(",")))continue;
       const risks=group.map(effectiveRisk),score=group.reduce((sum,s)=>sum+match(p,s),0)+2*new Set(group.map(s=>s.sector)).size+Math.max(...risks)-Math.min(...risks);
       if(score>best){best=score;selected=group;}
     }
@@ -40,5 +40,13 @@
     const raw=weights.map(w=>total*w/100),rounded=raw.map(Math.floor),order=raw.map((_,i)=>i).sort((a,b)=>(raw[b]-rounded[b])-(raw[a]-rounded[a]));
     const remaining=total-rounded.reduce((a,b)=>a+b,0);for(let i=0;i<remaining;i++)rounded[order[i]]++;return rounded;
   }
-  root.DemoLogic={profile,portfolio,validate,amounts};
+  function options(p,stocks){
+    const portfolios=[],excluded=[];
+    for(let i=0;i<3;i++){
+      const option=portfolio(p,stocks,excluded);portfolios.push(option);
+      excluded.push(option.recommendations.map(r=>r.ticker).sort().join(','));
+    }
+    return {portfolios};
+  }
+  root.DemoLogic={profile,portfolio,options,validate,amounts};
 })(globalThis);

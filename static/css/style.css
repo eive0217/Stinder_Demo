@@ -48,3 +48,5 @@ progress::-moz-progress-bar{background:#555}
 .error{color:#222;font-weight:700}
 a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #222;outline-offset:3px}
 @media(max-width:760px){h1{font-size:29px}.hero{gap:24px}.card{padding:20px}.brand{font-size:15px}}
+
+.plan-options{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}.plan-options [aria-current="page"],.plan-options [aria-pressed="true"]{background:#333;color:white}.result-grid{margin-top:22px}

@@ -51,3 +51,13 @@ class Stock(StrictModel):
         if not self.low_price_target <= self.average_price_target <= self.high_price_target:
             raise ValueError('목표가 순서 오류')
         return self
+
+class PortfolioOptions(StrictModel):
+    portfolios: list[Portfolio] = Field(min_length=3, max_length=3)
+
+    @model_validator(mode='after')
+    def distinct_options(self):
+        signatures = [tuple(sorted(r.ticker for r in p.recommendations)) for p in self.portfolios]
+        if len(set(signatures)) != 3:
+            raise ValueError('추천안별 종목 조합이 달라야 합니다.')
+        return self
