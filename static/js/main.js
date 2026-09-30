@@ -35,9 +35,9 @@ if(document.querySelector('#analysis')) {
       document.querySelector('#stage-profile').className='done';
       title.textContent='투자 성향 분석 완료';bar.value=50;
       await wait(400);
-      title.textContent='주식 데이터를 비교하고 있습니다...';
+      title.textContent='ETF 데이터를 비교하고 있습니다...';
       document.querySelector('#stage-portfolio').className='active';
-      document.querySelector('#stage-portfolio').textContent='주식 데이터 비교 및 포트폴리오 구성 중';
+      document.querySelector('#stage-portfolio').textContent='ETF 데이터 비교 및 포트폴리오 구성 중';
       await stage('portfolio');
       title.textContent='맞춤 포트폴리오 생성 완료';
       document.querySelector('#stage-portfolio').textContent='✓ 맞춤 포트폴리오 생성 완료';

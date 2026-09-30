@@ -1,7 +1,7 @@
-from logic.stock_matcher import effective_risk, match_score
+from logic.etf_matcher import effective_risk, match_score
 
-def allocate(profile, stocks):
-    strength = [max(1,match_score(profile,s))/(1+effective_risk(s)*(10-profile.risk_tolerance+profile.loss_sensitivity)/100) for s in stocks]
+def allocate(profile, etfs):
+    strength = [max(1,match_score(profile,s))/(1+effective_risk(s)*(10-profile.risk_tolerance+profile.loss_sensitivity)/100) for s in etfs]
     # Start at the minimum; allocate remaining integer points with a hard ceiling.
     weights = [15,15,15]
     for _ in range(55):

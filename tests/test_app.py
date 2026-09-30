@@ -11,8 +11,8 @@ from ai.investor_analysis import analyze_investor
 from ai.portfolio_recommendation import fallback_portfolio, fallback_options, validate_options, recommend_portfolio
 from ai.openai_client import structured_call
 from logic.questionnaire import fallback_profile, validate_answers
-from logic.schemas import Portfolio, InvestorProfile, Stock
-from logic.stock_matcher import load_stocks, validate_selection
+from logic.schemas import Portfolio, InvestorProfile, ETF
+from logic.etf_matcher import load_etfs, validate_selection
 
 class PrototypeTests(unittest.TestCase):
     def setUp(self):
@@ -21,9 +21,9 @@ class PrototypeTests(unittest.TestCase):
         self.client=self.app.test_client()
         self.client.get('/')
         with self.client.session_transaction() as s:self.headers={'X-CSRF-Token':s['csrf']}
-        self.stocks=load_stocks()
+        self.etfs=load_etfs()
         self.profile=fallback_profile([1]*10)
-        self.portfolio=fallback_portfolio(self.profile,self.stocks)
+        self.portfolio=fallback_portfolio(self.profile,self.etfs)
     def tearDown(self):self.directory.cleanup()
     def post(self,path,data=None):return self.client.post(path,json=data or {},headers=self.headers)
     def test_demo_journey(self):
@@ -59,15 +59,15 @@ class PrototypeTests(unittest.TestCase):
             with self.assertRaises(ValueError):InvestorProfile.model_validate(b)
     def test_unknown_ticker_and_risk(self):
         b=self.portfolio.model_dump();b['recommendations'][0]['ticker']='FAKE'
-        with self.assertRaises(ValueError):validate_selection(Portfolio.model_validate(b),self.profile,self.stocks)
-        b['recommendations'][0]['ticker']='TSLA'
-        with self.assertRaises(ValueError):validate_selection(Portfolio.model_validate(b),self.profile,self.stocks)
+        with self.assertRaises(ValueError):validate_selection(Portfolio.model_validate(b),self.profile,self.etfs)
+        b['recommendations'][0]['ticker']='VGT'
+        with self.assertRaises(ValueError):validate_selection(Portfolio.model_validate(b),self.profile,self.etfs)
     def test_fallback_profiles_and_constraints(self):
         rng=random.Random(42)
         for answers in [[0]*10,[1]*10,[2]*10]+[[rng.randrange(3) for _ in range(10)] for _ in range(80)]:
             p=fallback_profile(answers)
-            result=fallback_portfolio(p,self.stocks)
-            validate_selection(result,p,self.stocks)
+            result=fallback_portfolio(p,self.etfs)
+            validate_selection(result,p,self.etfs)
             self.assertEqual(sum(r.allocation for r in result.recommendations),100)
             self.assertTrue(all(15<=r.allocation<=50 for r in result.recommendations))
     def test_provider_failures_fall_back(self):
@@ -75,9 +75,9 @@ class PrototypeTests(unittest.TestCase):
             self.assertEqual(analyze_investor([1]*10)[1],'fallback');self.assertEqual(call.call_count,1)
         bad=self.portfolio.model_copy(deep=True);bad.recommendations[0].ticker='FAKE'
         with patch('ai.portfolio_recommendation.api_enabled',return_value=True),patch('ai.portfolio_recommendation.structured_call',return_value=bad) as call:
-            self.assertEqual(recommend_portfolio(self.profile,self.stocks)[1],'fallback');self.assertEqual(call.call_count,1)
+            self.assertEqual(recommend_portfolio(self.profile,self.etfs)[1],'fallback');self.assertEqual(call.call_count,1)
     def test_exactly_two_sdk_calls_and_payloads(self):
-        responses=[MagicMock(status='completed',output_parsed=self.profile),MagicMock(status='completed',output_parsed=fallback_options(self.profile,self.stocks))]
+        responses=[MagicMock(status='completed',output_parsed=self.profile),MagicMock(status='completed',output_parsed=fallback_options(self.profile,self.etfs))]
         with patch.dict(os.environ,{'OPENAI_API_KEY':'test-fake'}),patch('ai.openai_client.OpenAI') as factory:
             sdk=factory.return_value;sdk.responses.parse.side_effect=responses
             self.post('/api/start',{'answers':[1]*10})
@@ -90,7 +90,7 @@ class PrototypeTests(unittest.TestCase):
             payload=json.loads(calls[0].kwargs['input'][1]['content'])
             self.assertEqual(len(payload['questions_and_answers']),10)
             payload=json.loads(calls[1].kwargs['input'][1]['content'])
-            self.assertEqual(len(payload['STOCK DATA']),20)
+            self.assertEqual(len(payload['ETF DATA']),20)
             self.assertFalse(calls[0].kwargs['store'])
             self.assertEqual(factory.call_args.kwargs['max_retries'],0)
     def test_refusal_incomplete(self):
@@ -101,9 +101,9 @@ class PrototypeTests(unittest.TestCase):
         from logic.schemas import PortfolioOptions
         for answers in ([0]*10,[1]*10,[2]*10):
             profile=fallback_profile(answers)
-            options=fallback_options(profile,self.stocks)
+            options=fallback_options(profile,self.etfs)
             self.assertEqual(len(options.portfolios),3)
-            validate_options(options,profile,self.stocks)
+            validate_options(options,profile,self.etfs)
         bad=options.model_dump();bad['portfolios'][1]=bad['portfolios'][0]
         with self.assertRaises(ValueError):PortfolioOptions.model_validate(bad)
         bad=options.model_dump();bad['portfolios'].pop()
@@ -115,8 +115,16 @@ class PrototypeTests(unittest.TestCase):
             self.assertEqual(page.status_code,200)
             self.assertIn('추천안 '+['A','B','C'][i]+' · 종목과 비중',page.text)
 
+    def test_etf_overlap(self):
+        from logic.etf_matcher import selection_allowed
+        catalog={s['ticker']:s for s in self.etfs}
+        p=fallback_profile([2]*10)
+        self.assertFalse(selection_allowed(p,[catalog[t] for t in ['VOO','VTI','BND']]))
+        self.assertEqual(len(catalog),20)
+        self.assertTrue(all(s['listing_country']=='US' for s in self.etfs))
+
     def test_stock_data_validation(self):
-        b=self.stocks[0].copy();b['low_price_target']=b['high_price_target']+1
-        with self.assertRaises(ValueError):Stock.model_validate(b)
+        b=self.etfs[0].copy();b['expense_ratio']=-1
+        with self.assertRaises(ValueError):ETF.model_validate(b)
 
 if __name__=='__main__':unittest.main()

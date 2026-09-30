@@ -10,7 +10,7 @@ from ai.investor_analysis import analyze_investor
 from ai.portfolio_recommendation import recommend_portfolio
 from logic.questionnaire import QUESTIONS, TYPE_NAMES, SCORE_NAMES, validate_answers
 from logic.schemas import InvestorProfile
-from logic.stock_matcher import load_stocks
+from logic.etf_matcher import load_etfs
 
 ROOT = Path(__file__).resolve().parent
 
@@ -28,7 +28,7 @@ def create_app(test_config=None):
         return db
     with connect() as db:
         db.execute('CREATE TABLE IF NOT EXISTS jobs (id TEXT PRIMARY KEY, created REAL, status TEXT, answers TEXT, profile TEXT, portfolio TEXT, profile_source TEXT, portfolio_source TEXT)')
-    stocks = load_stocks()
+    etfs = load_etfs()
 
     @app.context_processor
     def context():
@@ -100,7 +100,7 @@ def create_app(test_config=None):
                 output,source=analyze_investor(json.loads(job['answers']))
                 state='profile_done'
             else:
-                output,source=recommend_portfolio(InvestorProfile.model_validate_json(job['profile']),stocks)
+                output,source=recommend_portfolio(InvestorProfile.model_validate_json(job['profile']),etfs)
                 state='done'
             with connect() as db:
                 # stage comes exclusively from the fixed allowlist above.
@@ -116,13 +116,13 @@ def create_app(test_config=None):
         job=get_job()
         if not job or job['status']!='done': return redirect(url_for('questionnaire'))
         p=json.loads(job['profile']); stored=json.loads(job['portfolio'])
-        if 'portfolios' not in stored:
+        if 'portfolios' not in stored or any(rec['ticker'] not in {s['ticker'] for s in etfs} for option in stored.get('portfolios',[]) for rec in option['recommendations']):
             return redirect(url_for('questionnaire'))
         options=stored['portfolios']
         selected=request.args.get('plan',0,type=int)
         if selected not in (0,1,2): selected=0
         portfolio=options[selected]
-        catalog={s['ticker']:s for s in stocks}
+        catalog={s['ticker']:s for s in etfs}
         cards=[dict(**r,stock=catalog[r['ticker']]) for r in portfolio['recommendations']]
         return render_template('result.html',profile=p,portfolio=portfolio,cards=cards,
             type_name=TYPE_NAMES[p['investor_type']],score_names=SCORE_NAMES, options=options, selected=selected,
