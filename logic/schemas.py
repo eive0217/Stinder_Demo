@@ -30,27 +30,22 @@ class Portfolio(StrictModel):
             raise ValueError('서로 다른 3개 종목이 필요합니다.')
         return self
 
-class Stock(StrictModel):
+class ETF(StrictModel):
     ticker: str = Field(min_length=1)
-    company_name: str = Field(min_length=1)
-    sector: str = Field(min_length=1)
+    fund_name: str = Field(min_length=1)
+    category: str = Field(min_length=1)
     risk_score: float = Field(ge=0, le=10)
     growth_score: float = Field(ge=0, le=10)
     stability_score: float = Field(ge=0, le=10)
-    analyst_confidence: float = Field(ge=0, le=10)
-    expected_upside: float = Field(ge=-100, le=1000)
+    liquidity_score: float = Field(ge=0, le=10)
     volatility: float = Field(ge=0, le=10)
     max_drawdown: float = Field(ge=0, le=10)
-    analyst_consensus: Literal['매수','중립','매도']
-    average_price_target: float = Field(gt=0)
-    low_price_target: float = Field(gt=0)
-    high_price_target: float = Field(gt=0)
-
-    @model_validator(mode='after')
-    def ordered_targets(self):
-        if not self.low_price_target <= self.average_price_target <= self.high_price_target:
-            raise ValueError('목표가 순서 오류')
-        return self
+    issuer: str = Field(min_length=1)
+    exposure: str = Field(min_length=1)
+    overlap_group: str = Field(min_length=1)
+    expense_ratio: float = Field(ge=0, le=5)
+    listing_country: Literal['US']
+    data_kind: Literal['synthetic']
 
 class PortfolioOptions(StrictModel):
     portfolios: list[Portfolio] = Field(min_length=3, max_length=3)

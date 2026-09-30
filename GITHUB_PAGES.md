@@ -39,7 +39,7 @@ GitHub Pages는 정적 호스팅이므로 Python 서버를 실행하지 않습�
 
 ## 나중에 설문이나 데이터를 수정한다면
 
-원본 `logic/questionnaire.py`, `data/stocks.json`, 시작/설문 템플릿을 수정한 뒤 다음 명령으로 정적 HTML과 데이터 JS를 갱신하세요.
+원본 `logic/questionnaire.py`, `data/etfs.json`, 시작/설문 템플릿을 수정한 뒤 다음 명령으로 정적 HTML과 데이터 JS를 갱신하세요.
 
 ```bash
 python scripts/build_static.py

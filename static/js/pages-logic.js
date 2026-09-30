@@ -15,23 +15,23 @@
     p.summary={steady_planner:'예측 가능한 선택과 손실을 줄이는 방향을 선호하는 답변이 나타났습니다. 안정성을 중심으로 종목을 비교합니다.',balanced_builder:'성장 가능성과 안정성을 함께 살피는 답변이 나타났습니다. 서로 다른 위험 특성을 조합합니다.',growth_seeker:'새로운 가능성과 성장을 중요하게 보는 답변이 나타났습니다. 변동성과 손실 위험도 함께 고려합니다.',bold_explorer:'불확실성을 감수하며 새로운 기회를 선택하는 답변이 나타났습니다. 적극적인 성향에도 종목별 비중 제한을 적용합니다.'}[p.investor_type];
     return p;
   }
-  function match(p,s){return round(Math.min(100,Math.max(0,10*(.35*(10-Math.abs(p.risk_tolerance-effectiveRisk(s)))+.30*(10-Math.abs(p.growth_preference-s.growth_score))+.20*(10-Math.abs(p.loss_sensitivity-s.stability_score))+.10*(10-Math.abs(p.time_horizon-(s.growth_score*.6+s.stability_score*.4)))+.05*s.analyst_confidence))));}
-  function allowed(p,group){return group.every(s=>effectiveRisk(s)<=riskLimit(p))&&group.filter(s=>effectiveRisk(s)>=7).length<=1&&new Set(group.map(s=>s.sector)).size>=2;}
-  function portfolio(p,stocks,excluded=[]){
+  function match(p,s){return round(Math.min(100,Math.max(0,10*(.35*(10-Math.abs(p.risk_tolerance-effectiveRisk(s)))+.30*(10-Math.abs(p.growth_preference-s.growth_score))+.20*(10-Math.abs(p.loss_sensitivity-s.stability_score))+.10*(10-Math.abs(p.time_horizon-(s.growth_score*.6+s.stability_score*.4)))+.03*s.liquidity_score+.02*Math.max(0,10-10*s.expense_ratio)))));}
+  function allowed(p,group){return group.every(s=>effectiveRisk(s)<=riskLimit(p))&&group.filter(s=>effectiveRisk(s)>=7).length<=1&&new Set(group.map(s=>s.category)).size>=2&&new Set(group.map(s=>s.overlap_group)).size===3;}
+  function portfolio(p,etfs,excluded=[]){
     let selected=null,best=-Infinity;
-    for(let a=0;a<stocks.length-2;a++)for(let b=a+1;b<stocks.length-1;b++)for(let c=b+1;c<stocks.length;c++){
-      const group=[stocks[a],stocks[b],stocks[c]];if(!allowed(p,group)||excluded.includes(group.map(s=>s.ticker).sort().join(",")))continue;
-      const risks=group.map(effectiveRisk),score=group.reduce((sum,s)=>sum+match(p,s),0)+2*new Set(group.map(s=>s.sector)).size+Math.max(...risks)-Math.min(...risks);
+    for(let a=0;a<etfs.length-2;a++)for(let b=a+1;b<etfs.length-1;b++)for(let c=b+1;c<etfs.length;c++){
+      const group=[etfs[a],etfs[b],etfs[c]];if(!allowed(p,group)||excluded.includes(group.map(s=>s.ticker).sort().join(",")))continue;
+      const risks=group.map(effectiveRisk),score=group.reduce((sum,s)=>sum+match(p,s),0)+2*new Set(group.map(s=>s.category)).size+Math.max(...risks)-Math.min(...risks);
       if(score>best){best=score;selected=group;}
     }
     if(!selected)throw Error('위험도 제한을 만족하는 종목 조합이 없습니다.');
     const strength=selected.map(s=>Math.max(1,match(p,s))/(1+effectiveRisk(s)*(10-p.risk_tolerance+p.loss_sensitivity)/100)),weights=[15,15,15];
     for(let n=0;n<55;n++){let index=-1;for(let i=0;i<3;i++)if(weights[i]<50&&(index<0||strength[i]/(weights[i]+1)>strength[index]/(weights[index]+1)))index=i;weights[index]++;}
-    const result={portfolio_summary:'설문 성향과 종목의 위험·성장·안정성을 비교해 세 종목을 조합했습니다. 변동성과 최대 낙폭 위험을 반영하고, 최소 두 업종에 나누어 비중을 배정했습니다. 가상 데이터에 기반한 교육용 예시입니다.',recommendations:selected.map((s,i)=>({ticker:s.ticker,allocation:weights[i],match_score:match(p,s),reason:`성장 선호도 ${p.growth_preference}점과 종목 성장 점수 ${s.growth_score}점, 손실 민감도 ${p.loss_sensitivity}점을 함께 비교했습니다. 변동성 ${s.volatility}점과 최대 낙폭 위험 ${s.max_drawdown}점을 반영해 비중을 ${weights[i]}%로 정했습니다.`}))};
-    validate(result,p,stocks);return result;
+    const result={portfolio_summary:'설문 성향과 종목의 위험·성장·안정성을 비교해 세 종목을 조합했습니다. 변동성과 최대 낙폭 위험을 반영하고, 최소 두 ETF 유형에 나누어 비중을 배정했습니다. 가상 데이터에 기반한 교육용 예시입니다.',recommendations:selected.map((s,i)=>({ticker:s.ticker,allocation:weights[i],match_score:match(p,s),reason:`성장 선호도 ${p.growth_preference}점과 종목 성장 점수 ${s.growth_score}점, 손실 민감도 ${p.loss_sensitivity}점을 함께 비교했습니다. 변동성 ${s.volatility}점과 최대 낙폭 위험 ${s.max_drawdown}점을 반영해 비중을 ${weights[i]}%로 정했습니다.`}))};
+    validate(result,p,etfs);return result;
   }
-  function validate(result,p,stocks){
-    const r=result.recommendations,catalog=new Map(stocks.map(s=>[s.ticker,s]));
+  function validate(result,p,etfs){
+    const r=result.recommendations,catalog=new Map(etfs.map(s=>[s.ticker,s]));
     if(!Array.isArray(r)||r.length!==3||new Set(r.map(x=>x.ticker)).size!==3||r.some(x=>!catalog.has(x.ticker)||!Number.isInteger(x.allocation)||x.allocation<15||x.allocation>50||!Number.isFinite(x.match_score)||x.match_score<0||x.match_score>100||typeof x.reason!=='string'||!x.reason.trim())||r.reduce((sum,x)=>sum+x.allocation,0)!==100||!allowed(p,r.map(x=>catalog.get(x.ticker))))throw Error('포트폴리오 검증에 실패했습니다.');
     return result;
   }
@@ -40,10 +40,10 @@
     const raw=weights.map(w=>total*w/100),rounded=raw.map(Math.floor),order=raw.map((_,i)=>i).sort((a,b)=>(raw[b]-rounded[b])-(raw[a]-rounded[a]));
     const remaining=total-rounded.reduce((a,b)=>a+b,0);for(let i=0;i<remaining;i++)rounded[order[i]]++;return rounded;
   }
-  function options(p,stocks){
+  function options(p,etfs){
     const portfolios=[],excluded=[];
     for(let i=0;i<3;i++){
-      const option=portfolio(p,stocks,excluded);portfolios.push(option);
+      const option=portfolio(p,etfs,excluded);portfolios.push(option);
       excluded.push(option.recommendations.map(r=>r.ticker).sort().join(','));
     }
     return {portfolios};
